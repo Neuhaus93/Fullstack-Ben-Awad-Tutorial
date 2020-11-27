@@ -12,7 +12,7 @@ import microConfig from './mikro-orm.config';
 import { HelloResolver } from './resolvers/hello';
 import { PostResolver } from './resolvers/post';
 import { UserResolver } from './resolvers/user';
-import { __prod__ } from './constants';
+import { COOKIE_NAME, __prod__ } from './constants';
 import { MyContext } from './types';
 
 declare module 'express-session' {
@@ -31,7 +31,8 @@ const main = async () => {
   const redisClient = redis.createClient();
 
   redisClient.on('connect', function () {
-    console.log('Connected to Redis');
+    console.log('        Connected to Redis 🚀🚀');
+    console.log('=========================================');
   });
 
   redisClient.on('error', function (err) {
@@ -46,7 +47,7 @@ const main = async () => {
   );
   app.use(
     session({
-      name: 'qid',
+      name: COOKIE_NAME,
       store: new RedisStore({
         client: redisClient,
         disableTouch: true,

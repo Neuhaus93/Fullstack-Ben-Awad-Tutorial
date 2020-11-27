@@ -11,6 +11,7 @@ import {
   Resolver,
 } from 'type-graphql';
 import argon2 from 'argon2';
+import { COOKIE_NAME } from '../constants';
 
 @InputType()
 class UsernamePasswordInput {
@@ -127,7 +128,7 @@ export class UserResolver {
   }
 
   /**
-   * Login Mutation
+   * LOGIN MUTATION - Login the user and stores the user ID on the session
    * @param values Object containing the username and password
    * @returns Returns either an array of errors or a user
    */
@@ -168,5 +169,24 @@ export class UserResolver {
 
     /** Returning the user if the login was successful */
     return { user };
+  }
+
+  /**
+   * LOGOUT MUTATION - Logs out the user and clears the session
+   * @returns Boolean value indicating success (true) or failure (false)
+   */
+  @Mutation(() => Boolean)
+  async logout(@Ctx() { req, res }: MyContext) {
+    return new Promise((resolve) =>
+      req.session.destroy((err) => {
+        res.clearCookie(COOKIE_NAME);
+        if (err) {
+          console.log(err);
+          resolve(false);
+          return;
+        }
+        resolve(true);
+      })
+    );
   }
 }
