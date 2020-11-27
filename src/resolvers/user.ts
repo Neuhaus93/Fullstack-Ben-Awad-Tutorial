@@ -56,15 +56,15 @@ export class UserResolver {
 
   /**
    * REGISTER MUTATION - Register and logs the new user in if successful.
-   * @param options Object containing the username and password
+   * @param values Object containing the username and password
    * @returns Returns either an array of errors or a user
    */
   @Mutation(() => UserResponse)
   async register(
-    @Arg('options') options: UsernamePasswordInput,
+    @Arg('values') values: UsernamePasswordInput,
     @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
-    const { username, password } = options;
+    const { username, password } = values;
 
     /** Username lengt must be greater than 2 */
     if (username.length <= 2) {
@@ -128,15 +128,15 @@ export class UserResolver {
 
   /**
    * Login Mutation
-   * @param options Object containing the username and password
+   * @param values Object containing the username and password
    * @returns Returns either an array of errors or a user
    */
   @Mutation(() => UserResponse)
   async login(
-    @Arg('options') options: UsernamePasswordInput,
+    @Arg('values') values: UsernamePasswordInput,
     @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
-    const { username, password } = options;
+    const { username, password } = values;
     const user = await em.findOne(User, { username });
 
     /** No user found with the username */
