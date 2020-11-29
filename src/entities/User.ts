@@ -9,8 +9,12 @@ export class User {
   id!: number;
 
   @Field()
-  @Property({ type: 'text', unique: true })
+  @Property({ type: 'text' })
   username!: string;
+
+  @Field()
+  @Property({ type: 'text', unique: true })
+  email!: string;
 
   @Property({ type: 'text' })
   password: string;
