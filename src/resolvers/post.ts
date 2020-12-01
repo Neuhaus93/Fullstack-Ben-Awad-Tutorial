@@ -1,9 +1,7 @@
-import { GraphQLResolveInfo } from 'graphql';
 import {
   Arg,
   Ctx,
   FieldResolver,
-  Info,
   Int,
   Mutation,
   Query,
@@ -11,8 +9,9 @@ import {
   Root,
   UseMiddleware,
 } from 'type-graphql';
-import { LessThan } from 'typeorm';
+import { getConnection, LessThan } from 'typeorm';
 import { Post } from '../entities/Post';
+import { Updoot } from '../entities/Updoot';
 import { isAuth } from '../middleware/isAuth';
 import { MyContext } from '../types';
 import { PostInput } from './types/PostInput';
@@ -25,11 +24,50 @@ export class PostResolver {
     return root.text.slice(0, 50);
   }
 
+  @Mutation(() => Boolean)
+  @UseMiddleware(isAuth)
+  async vote(
+    @Arg('postId', () => Int) postId: number,
+    @Arg('value', () => Int) value: number,
+    @Ctx() { req }: MyContext
+  ) {
+    const isUpdoot = value !== -1;
+    const realValue = isUpdoot ? 1 : -1;
+    const { userId } = req.session;
+
+    const queryRunner = getConnection().createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.manager.insert(Updoot, {
+        userId,
+        postId,
+        value: realValue,
+      });
+
+      await queryRunner.manager.update(
+        Post,
+        {
+          id: postId,
+        },
+        { points: () => `points + ${realValue}` }
+      );
+      await queryRunner.commitTransaction();
+    } catch {
+      await queryRunner.rollbackTransaction();
+      return false;
+    } finally {
+      await queryRunner.release();
+    }
+
+    return true;
+  }
+
   @Query(() => PostsConnection)
   async postsConnection(
     @Arg('first', () => Int) first: number,
-    @Arg('after', () => String) after: string,
-    @Info() info: GraphQLResolveInfo
+    @Arg('after', () => String) after: string
   ): Promise<PostsConnection> {
     const realLimit = Math.min(50, first);
     const realLimitPlusOne = realLimit + 1;
@@ -40,7 +78,7 @@ export class PostResolver {
     const posts = await Post.find({
       relations: ['creator'],
       order: { createdAt: -1, id: -1 },
-      take: realLimit,
+      take: realLimitPlusOne,
       where,
     });
 
@@ -65,7 +103,6 @@ export class PostResolver {
   @Query(() => Post, { nullable: true })
   post(@Arg('id', () => Int) id: number): Promise<Post | undefined> {
     return Post.findOne({ where: { id }, relations: ['creator'] });
-    // return Post.findOne(id);
   }
 
   @Mutation(() => Post)
