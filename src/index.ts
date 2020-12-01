@@ -20,7 +20,8 @@ declare module 'express-session' {
 }
 
 const main = async () => {
-  const connection = createConnection(typeormConfig);
+  const connection = await createConnection(typeormConfig);
+  await connection.runMigrations();
 
   const app = express();
 
