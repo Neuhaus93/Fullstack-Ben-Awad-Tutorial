@@ -35,23 +35,49 @@ export class PostResolver {
     const realValue = isUpdoot ? 1 : -1;
     const { userId } = req.session;
 
+    const updoot = await Updoot.findOne({ where: { postId, userId } });
+    const hasAlreadyVoted = !!updoot;
+
+    if (updoot && updoot.value === realValue) {
+      return false;
+    }
+
     const queryRunner = getConnection().createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      await queryRunner.manager.insert(Updoot, {
-        userId,
-        postId,
-        value: realValue,
-      });
+      if (!hasAlreadyVoted) {
+        await queryRunner.manager.insert(Updoot, {
+          userId,
+          postId,
+          value: realValue,
+        });
+      }
+
+      await queryRunner.manager.update(
+        Updoot,
+        {
+          userId,
+          postId,
+        },
+        { value: realValue }
+      );
 
       await queryRunner.manager.update(
         Post,
         {
           id: postId,
         },
-        { points: () => `points + ${realValue}` }
+        {
+          points: () => {
+            if (hasAlreadyVoted) {
+              return `points + ${2 * realValue}`;
+            } else {
+              return `points + ${realValue}`;
+            }
+          },
+        }
       );
       await queryRunner.commitTransaction();
     } catch {
