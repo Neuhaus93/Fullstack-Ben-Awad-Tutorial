@@ -1,7 +1,9 @@
+import { GraphQLResolveInfo } from 'graphql';
 import {
   Arg,
   Ctx,
   FieldResolver,
+  Info,
   Int,
   Mutation,
   Query,
@@ -9,12 +11,12 @@ import {
   Root,
   UseMiddleware,
 } from 'type-graphql';
-import { getConnection } from 'typeorm';
+import { LessThan } from 'typeorm';
 import { Post } from '../entities/Post';
 import { isAuth } from '../middleware/isAuth';
 import { MyContext } from '../types';
-import { PostsConnection } from './types/PostsConnection';
 import { PostInput } from './types/PostInput';
+import { PostsConnection } from './types/PostsConnection';
 
 @Resolver(Post)
 export class PostResolver {
@@ -26,26 +28,21 @@ export class PostResolver {
   @Query(() => PostsConnection)
   async postsConnection(
     @Arg('first', () => Int) first: number,
-    @Arg('after', () => String) after: string
+    @Arg('after', () => String) after: string,
+    @Info() info: GraphQLResolveInfo
   ): Promise<PostsConnection> {
     const realLimit = Math.min(50, first);
     const realLimitPlusOne = realLimit + 1;
 
-    const qb = getConnection()
-      .getRepository(Post)
-      .createQueryBuilder('p')
-      // .where("user.id = :id", { id: 1 })
-      .orderBy('p."createdAt"', 'DESC')
-      .addOrderBy('p.id', 'DESC')
-      .take(realLimitPlusOne);
-
-    if (after) {
-      qb.where('p."createdAt" < :cursor', {
-        cursor: new Date(parseInt(after)),
-      });
-    }
-
-    const posts = await qb.getMany();
+    const where = after
+      ? { createdAt: LessThan(new Date(parseInt(after))) }
+      : {};
+    const posts = await Post.find({
+      relations: ['creator'],
+      order: { createdAt: -1, id: -1 },
+      take: realLimit,
+      where,
+    });
 
     const edges = posts
       .filter((_, index) => index !== realLimit)
@@ -67,7 +64,8 @@ export class PostResolver {
 
   @Query(() => Post, { nullable: true })
   post(@Arg('id', () => Int) id: number): Promise<Post | undefined> {
-    return Post.findOne(id);
+    return Post.findOne({ where: { id }, relations: ['creator'] });
+    // return Post.findOne(id);
   }
 
   @Mutation(() => Post)
