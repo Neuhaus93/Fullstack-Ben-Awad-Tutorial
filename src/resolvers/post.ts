@@ -147,34 +147,6 @@ export class PostResolver {
       replacements
     );
 
-    // const posts = await getConnection()
-    //   .createQueryBuilder()
-    //   .select('post')
-    //   .addSelect((sq) => {
-    //     return sq
-    //       .select('updoot.value')
-    //       .from(Updoot, 'updoot')
-    //       .where('updoot.userId = :uid and updoot.postId = post.id', {
-    //         uid: userId,
-    //       });
-    //   })
-    //   .from(Post, 'post')
-    //   .orderBy('"post_createdAt"', 'DESC')
-    //   .leftJoinAndSelect('post.creator', 'creator')
-    //   .take(realLimitPlusOne)
-    //   .getMany();
-
-    // const where = after
-    //   ? { createdAt: LessThan(new Date(parseInt(after))) }
-    //   : {};
-    // const posts = await Post.find({
-    //   relations: ['creator'],
-    //   select: undefined,
-    //   order: { createdAt: -1, id: -1 },
-    //   take: realLimitPlusOne,
-    //   where,
-    // });
-
     const edges = posts
       .filter((_, index) => index !== realLimit)
       .map((post) => ({
@@ -210,22 +182,58 @@ export class PostResolver {
   @Mutation(() => Post, { nullable: true })
   async updatePost(
     @Arg('id', () => Int) id: number,
-    @Arg('title', () => String, { nullable: true }) title: string
-  ): Promise<Post | undefined> {
-    const post = await Post.findOne(id);
-    if (!post) {
-      return undefined;
-    }
-    if (typeof title !== 'undefined') {
-      await Post.update({ id }, { title });
-    }
+    @Arg('title') title: string,
+    @Arg('text') text: string,
+    @Ctx() { req }: MyContext
+  ): Promise<Post | null> {
+    const result = await getConnection()
+      .createQueryBuilder()
+      .update(Post)
+      .set({ title, text })
+      .whereInIds(id)
+      .andWhere('"creatorId" = :cid', { cid: req.session.userId })
+      .returning('*')
+      .execute();
 
-    return post;
+    return result.raw[0];
   }
 
-  @Mutation(() => Boolean, { nullable: true })
-  async deletePost(@Arg('id', () => Int) id: number): Promise<Boolean> {
-    await Post.delete(id);
-    return true;
+  @Mutation(() => Boolean)
+  @UseMiddleware(isAuth)
+  async deletePost(
+    @Arg('id', () => Int) id: number,
+    @Ctx() { req }: MyContext
+  ): Promise<Boolean> {
+    /** Not casdade way */
+    // const post = await Post.findOne(id);
+    // if (!post) {
+    //   return false;
+    // }
+
+    // if (post.creatorId !== req.session.userId) {
+    //   throw new Error('not authorized');
+    // }
+
+    // await Updoot.delete({ postId: id });
+    // await Post.delete({ id });
+
+    const result = await getConnection()
+      .createQueryBuilder()
+      .delete()
+      .from(Post)
+      .whereInIds(id)
+      .andWhere('"creatorId" = :cid', { cid: req.session.userId })
+      .returning('id')
+      .execute();
+
+    if (!result.affected) {
+      return false;
+    }
+
+    if (result.affected !== 0) {
+      return true;
+    }
+
+    return false;
   }
 }
