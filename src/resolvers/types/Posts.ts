@@ -16,20 +16,20 @@ class PageInfo {
   endCursor: string;
 }
 
-@ObjectType()
-class Edge {
-  @Field()
-  cursor: string; // A marker for an edge's position in the connection
+// @ObjectType()
+// class Edge {
+//   @Field()
+//   cursor: string; // A marker for an edge's position in the connection
 
-  @Field(() => Post)
-  node: Post;
-}
+//   @Field(() => Post)
+//   node: Post;
+// }
 
 @ObjectType()
-export class PostsConnection {
+export class Posts {
   @Field(() => PageInfo)
   pageInfo: PageInfo;
 
-  @Field(() => [Edge])
-  edges: Edge[];
+  @Field(() => [Post])
+  edges: Post[];
 }

@@ -16,7 +16,7 @@ import { User } from '../entities/User';
 import { isAuth } from '../middleware/isAuth';
 import { MyContext } from '../types';
 import { PostInput } from './types/PostInput';
-import { PostsConnection } from './types/PostsConnection';
+import { Posts } from './types/Posts';
 import { VoteResult } from './types/VoteResult';
 
 @Resolver(Post)
@@ -130,11 +130,11 @@ export class PostResolver {
     return { voteWasRegistered: true, ammountChanged, newVoteStatus };
   }
 
-  @Query(() => PostsConnection)
-  async postsConnection(
+  @Query(() => Posts)
+  async posts(
     @Arg('first', () => Int) first: number,
     @Arg('after', () => String) after: string
-  ): Promise<PostsConnection> {
+  ): Promise<Posts> {
     const realLimit = Math.min(50, first);
     const realLimitPlusOne = realLimit + 1;
 
@@ -155,12 +155,11 @@ export class PostResolver {
       replacements
     );
 
-    const edges = posts
-      .filter((_, index) => index !== realLimit)
-      .map((post) => ({
-        cursor: post.createdAt.toISOString(),
-        node: post,
-      }));
+    const edges = posts.filter((_, index) => index !== realLimit);
+    // .map((post) => ({
+    //   cursor: post.createdAt.toISOString(),
+    //   node: post,
+    // }));
 
     return {
       edges,
