@@ -133,12 +133,10 @@ export class PostResolver {
   @Query(() => PostsConnection)
   async postsConnection(
     @Arg('first', () => Int) first: number,
-    @Arg('after', () => String) after: string,
-    @Ctx() { req }: MyContext
+    @Arg('after', () => String) after: string
   ): Promise<PostsConnection> {
     const realLimit = Math.min(50, first);
     const realLimitPlusOne = realLimit + 1;
-    const userId = req.session.userId;
 
     const replacements: any[] = [];
 

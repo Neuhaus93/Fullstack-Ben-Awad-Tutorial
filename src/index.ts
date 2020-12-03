@@ -1,3 +1,4 @@
+import dotenv from 'dotenv';
 import { ApolloServer } from 'apollo-server-express';
 import connectRedis from 'connect-redis';
 import cors from 'cors';
@@ -11,7 +12,7 @@ import { COOKIE_NAME, __prod__ } from './constants';
 import { HelloResolver } from './resolvers/hello';
 import { PostResolver } from './resolvers/post';
 import { UserResolver } from './resolvers/user';
-import typeormConfig from './typeorm.config';
+import ORMconfig from './typeorm.config';
 import { createUpdootLoader } from './utils/createUpdootLoader';
 import { createUserLoader } from './utils/createUserLoader';
 
@@ -21,14 +22,18 @@ declare module 'express-session' {
   }
 }
 
+dotenv.config();
+
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 4000;
+
 const main = async () => {
-  const connection = await createConnection(typeormConfig);
+  const connection = await createConnection(ORMconfig);
   await connection.runMigrations();
 
   const app = express();
 
   const redisStore = connectRedis(session);
-  const redis = new Redis();
+  const redis = new Redis(process.env.REDIS_URL);
 
   redis.on('connect', function () {
     console.log('        Connected to Redis 🚀🚀');
@@ -39,9 +44,11 @@ const main = async () => {
     console.log('Redis error: ' + err);
   });
 
+  app.set('trust proxy', 1);
+
   app.use(
     cors({
-      origin: 'http://localhost:3000',
+      origin: process.env.CORS_ORIGIN,
       credentials: true,
     })
   );
@@ -59,7 +66,7 @@ const main = async () => {
         secure: __prod__, // Cookie only works in https
       },
       saveUninitialized: false,
-      secret: 'my really really secret key',
+      secret: process.env.SESSION_SECRET,
       resave: false,
     })
   );
@@ -83,7 +90,7 @@ const main = async () => {
     cors: false,
   });
 
-  app.listen(4000, () => {
+  app.listen(PORT, () => {
     console.log('=========================================');
     console.log('  Server started on localhost:4000 🚀🚀');
     console.log('=========================================');
